@@ -123,7 +123,7 @@ function Start-BxoCheatAnalysis {
     }
 
     # PASS 2: Mixin Injection Checks
-    Write-Host " [2/3] Checking Mixin injections (Player & Network modifications)..." -ForegroundColor White
+    Write-Host " [2/3] Checking Mixin injections (Player and Network modifications)..." -ForegroundColor White
     $SuspiciousMixins = @()
     
     foreach ($File in $JarData.GetEnumerator()) {
@@ -139,7 +139,7 @@ function Start-BxoCheatAnalysis {
     if ($SuspiciousMixins.Count -gt 0) {
         $CheatScore += 45
         foreach ($Mixin in $SuspiciousMixins) {
-            $Reports += "GAME INTERCEPTION: $Mixin (Direct modification to native client/player packets)."
+            $Reports += "GAME INTERCEPTION: $Mixin (Direct modification to native client or player packets)."
         }
     }
 
@@ -150,7 +150,7 @@ function Start-BxoCheatAnalysis {
         if ($File.Key.EndsWith(".class")) {
             foreach ($Pattern in $Patterns["Cheats"]) {
                 if ($File.Value.Text -match $Pattern) {
-                    $CheatHits += "In $($File.Key) -> Match: '$Pattern'"
+                    $CheatHits += "In $($File.Key) -> Match: $Pattern"
                 }
             }
         }
@@ -189,10 +189,10 @@ function Show-CheatReport {
     $StatusText = "CLEAN (No Cheats Detected)"
     if ($CheatScore -ge 20 -and $CheatScore -lt 50) {
         $Color = "Yellow"
-        $StatusText = "SUSPICIOUS (Unconfirmed cheat modules/references)"
+        $StatusText = "SUSPICIOUS (Unconfirmed cheat modules or references)"
     } elseif ($CheatScore -ge 50) {
         $Color = "Red"
-        $StatusText = "CHEAT DETECTED (Definite hack/cheat modules)"
+        $StatusText = "CHEAT DETECTED (Definite hack or cheat modules)"
     }
 
     Write-Host ""
@@ -222,15 +222,14 @@ function Show-CheatReport {
 # ==============================================================================
 Write-Host "How do you want to proceed?" -ForegroundColor Cyan
 Write-Host "1) Analyze a single .jar file"
-Write-Host "2) Analyze an entire folder (e.g. 'mods' folder)"
+Write-Host "2) Analyze an entire folder (example: mods folder)"
 Write-Host "3) Exit"
 Write-Host ""
 $Choice = Read-Host "Choose an option (1-3)"
 
 if ($Choice -eq "1") {
-    $FilePath = Read-Host "Enter or drag & drop the .jar file path here"
+    $FilePath = Read-Host "Enter or drag and drop the .jar file path here"
     if ($FilePath) {
-        # Clean quotes using ASCII 34 to completely prevent parsing conflicts
         $FilePath = $FilePath.Trim().Trim([char]34)
         Start-BxoCheatAnalysis -JarPath $FilePath
     }
@@ -238,7 +237,6 @@ if ($Choice -eq "1") {
 elseif ($Choice -eq "2") {
     $Folder = Read-Host "Enter the folder path to analyze"
     if ($Folder) {
-        # Clean quotes using ASCII 34 to completely prevent parsing conflicts
         $Folder = $Folder.Trim().Trim([char]34)
         if (Test-Path $Folder) {
             $Files = Get-ChildItem -Path $Folder -Filter "*.jar"
