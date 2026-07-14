@@ -230,14 +230,16 @@ $Choice = Read-Host "Choose an option (1-3)"
 if ($Choice -eq "1") {
     $FilePath = Read-Host "Enter or drag & drop the .jar file path here"
     if ($FilePath) {
-        $FilePath = $FilePath.Replace('"', '').Trim()
+        # Clean quotes using ASCII 34 to completely prevent parsing conflicts
+        $FilePath = $FilePath.Trim().Trim([char]34)
         Start-BxoCheatAnalysis -JarPath $FilePath
     }
 } 
 elseif ($Choice -eq "2") {
     $Folder = Read-Host "Enter the folder path to analyze"
     if ($Folder) {
-        $Folder = $Folder.Replace('"', '').Trim()
+        # Clean quotes using ASCII 34 to completely prevent parsing conflicts
+        $Folder = $Folder.Trim().Trim([char]34)
         if (Test-Path $Folder) {
             $Files = Get-ChildItem -Path $Folder -Filter "*.jar"
             if ($Files.Count -eq 0) {
