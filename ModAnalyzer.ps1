@@ -2,7 +2,7 @@
 #                     BXO CHEAT ANALYZER - MINECRAFT ONLY
 # ==============================================================================
 # Author: BXO Staff
-# UPDATE: Fixed quotes parsing issue in menus
+# UPDATE: Standard character build to prevent encoding crashes
 # Description: Custom utility to scan .jar files for movement and combat hacks.
 # ==============================================================================
 
@@ -197,13 +197,13 @@ function Show-CheatReport {
     }
 
     Write-Host ""
-    Write-Host "┌───────────────────────────────────────────────────────────────────────────────────────────────────┐" -ForegroundColor $Color
-    Write-Host "│                                     ANTICHEAT SCAN VERDICT                                        │" -ForegroundColor $Color
-    Write-Host "├───────────────────────────────────────────────────────────────────────────────────────────────────┤" -ForegroundColor $Color
-    Write-Host "  » Scanned Mod:    $ModName" -ForegroundColor White
-    Write-Host "  » Threat Status:  $StatusText" -ForegroundColor $Color -Bold
-    Write-Host "  » Suspicion Score:[ $CheatScore / 100 ]" -ForegroundColor $Color
-    Write-Host "├───────────────────────────────────────────────────────────────────────────────────────────────────┤" -ForegroundColor $Color
+    Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
+    Write-Host "|                                     ANTICHEAT SCAN VERDICT                                        |" -ForegroundColor $Color
+    Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
+    Write-Host "  >> Scanned Mod:    $ModName" -ForegroundColor White
+    Write-Host "  >> Threat Status:  $StatusText" -ForegroundColor $Color -Bold
+    Write-Host "  >> Suspicion Score:[ $CheatScore / 100 ]" -ForegroundColor $Color
+    Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
 
     if ($Reports.Count -eq 0) {
         Write-Host "  [+] No suspicious strings or cheat configurations found." -ForegroundColor Green
@@ -214,7 +214,7 @@ function Show-CheatReport {
             Write-Host "  [-] $Report" -ForegroundColor LightRed
         }
     }
-    Write-Host "└───────────────────────────────────────────────────────────────────────────────────────────────────┘" -ForegroundColor $Color
+    Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
     Write-Host ""
 }
 
