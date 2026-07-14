@@ -1,8 +1,8 @@
 # ==============================================================================
-#                     BXO CHEAT ANALYZER - MINECRAFT ONLY
+#                     BXO MOD ANALYZER - MINECRAFT ONLY
 # ==============================================================================
 # Author: BXO Staff
-# UPDATE: Standard character build to prevent encoding crashes
+# UPDATE: Fixed stream lock and removed non-standard encoding blocks
 # Description: Custom utility to scan .jar files for movement and combat hacks.
 # ==============================================================================
 
@@ -17,15 +17,11 @@ $Global:JarCache = @{}
 # ==============================================================================
 # 1. USER INTERFACE
 # ==============================================================================
-Write-Host "██████╗ ██╗  ██╗ ██████╗      ██████╗██╗  ██╗███████╗ █████╗ ████████╗" -ForegroundColor Cyan
-Write-Host "██╔══██╗╚██╗██╔╝██╔═══██╗    ██╔════╝██║  ██║██╔════╝██╔══██╗╚══██╔══╝" -ForegroundColor Cyan
-Write-Host "██████╔╝ ╚███╔╝ ██║   ██║    ██║     ███████║█████╗  ███████║   ██║   " -ForegroundColor Cyan
-Write-Host "██╔══██╗ ██╔██╗ ██║   ██║    ██║     ██╔══██║██╔══╝  ██╔══██║   ██║   " -ForegroundColor Cyan
-Write-Host "██████╔╝██╔╝ ██╗╚██████╔╝    ╚██████╗██║  ██║███████╗██║  ██║   ██║   " -ForegroundColor Cyan
-Write-Host "╚══════╝ ╚═╝  ╚═╝ ╚═════╝     ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝   " -ForegroundColor Cyan
-Write-Host "                                              [ Powered by BXO Tools ]" -ForegroundColor Cyan
+Write-Host "=======================================================================================================================" -ForegroundColor Cyan
+Write-Host "                                   B X O   C H E A T   A N A L Y Z E R                                                 " -ForegroundColor Cyan
+Write-Host "                                       [ Powered by BXO Tools ]                                                        " -ForegroundColor Cyan
+Write-Host "=======================================================================================================================" -ForegroundColor Cyan
 
-Write-Host "=======================================================================================================================" -ForegroundColor Gray
 Write-Host " [!] This tool analyzes .jar files EXCLUSIVELY for Cheats, Hacks, and modified clients." -ForegroundColor Yellow
 Write-Host "=======================================================================================================================" -ForegroundColor Gray
 Write-Host ""
@@ -61,13 +57,19 @@ function Get-JarData {
     }
 
     $FilesData = @{}
+    $Stream = $null
+    $Archive = $null
+    
     try {
-        $Archive = [System.IO.Compression.ZipFile]::Open($JarPath, [System.IO.Compression.ZipArchiveMode]::Read)
+        # Open stream with FileShare.ReadWrite to allow scanning locked mod files
+        $Stream = [System.IO.File]::Open($JarPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $Archive = New-Object System.IO.Compression.ZipArchive($Stream, [System.IO.Compression.ZipArchiveMode]::Read)
+        
         foreach ($Entry in $Archive.Entries) {
             if ($Entry.FullName.EndsWith("/")) { continue }
 
-            $Stream = $Entry.Open()
-            $Reader = New-Object System.IO.BinaryReader($Stream)
+            $EntryStream = $Entry.Open()
+            $Reader = New-Object System.IO.BinaryReader($EntryStream)
             $Bytes = $Reader.ReadBytes($Entry.Length)
             $TextContent = [System.Text.Encoding]::UTF8.GetString($Bytes)
             
@@ -76,14 +78,18 @@ function Get-JarData {
             }
             
             $Reader.Close()
-            $Stream.Close()
+            $EntryStream.Close()
         }
-        $Archive.Dispose()
-        $Global:JarCache[$JarPath] = $FilesData
     } catch {
         Write-Host "[-] Failed to decode JAR file: $JarPath" -ForegroundColor Red
+    } finally {
+        if ($null -ne $Archive) { $Archive.Dispose() }
+        if ($null -ne $Stream) { $Stream.Dispose() }
     }
     
+    if ($FilesData.Count -gt 0) {
+        $Global:JarCache[$JarPath] = $FilesData
+    }
     return $FilesData
 }
 
@@ -101,7 +107,7 @@ function Start-BxoCheatAnalysis {
     $ModName = [System.IO.Path]::GetFileName($JarPath)
     Write-Host "-----------------------------------------------------------------------------------------------------------------------" -ForegroundColor Gray
     Write-Host " [*] STARTING SCAN ON: " -NoNewline
-    Write-Host $ModName -ForegroundColor Cyan -Bold
+    Write-Host $ModName -ForegroundColor Cyan
     Write-Host "-----------------------------------------------------------------------------------------------------------------------" -ForegroundColor Gray
 
     $Reports = @()
@@ -201,7 +207,7 @@ function Show-CheatReport {
     Write-Host "|                                     ANTICHEAT SCAN VERDICT                                        |" -ForegroundColor $Color
     Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
     Write-Host "  >> Scanned Mod:    $ModName" -ForegroundColor White
-    Write-Host "  >> Threat Status:  $StatusText" -ForegroundColor $Color -Bold
+    Write-Host "  >> Threat Status:  $StatusText" -ForegroundColor $Color
     Write-Host "  >> Suspicion Score:[ $CheatScore / 100 ]" -ForegroundColor $Color
     Write-Host "+---------------------------------------------------------------------------------------------------+" -ForegroundColor $Color
 
