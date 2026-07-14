@@ -2,6 +2,7 @@
 #                     BXO CHEAT ANALYZER - MINECRAFT ONLY
 # ==============================================================================
 # Author: BXO Staff
+# UPDATE: Fixed quotes parsing issue in menus
 # Description: Custom utility to scan .jar files for movement and combat hacks.
 # ==============================================================================
 
