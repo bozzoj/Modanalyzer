@@ -7,23 +7,18 @@ Add-Type -AssemblyName System.IO.Compression
 $Global:JarCache = @{}
 
 Write-Host "--- BXO MOD ANALYZER ---" -ForegroundColor Cyan
-Write-Host "Utility di scansione per file .jar" -ForegroundColor Gray
+Write-Host "JAR scan and cheat detection utility" -ForegroundColor Gray
 Write-Host ""
 
 $Patterns = @{
     "Cheats" = @(
         "net/minecraft/client/Minecraft;thePlayer", 
         "net/minecraft/network/play/client/C03PacketPlayer", 
-        "bypass", "reach", "killaura", "flight", "autoclicker", "velocity", 
-        "speedhack", "aimbot", "esp", "xray", "noslow", "phase", "scaffold",
-        "PacketEvent", "PlayerPackets", "noFall", "criticals", "fastbow",
-        "superhero", "timerhack", "triggerbot", "blink", "jesusfloat"
+        "killaura", "speedhack", "scaffold", "timerhack", "triggerbot", "flight"
     );
     "Mixins" = @(
         "Lnet/minecraft/client/entity/EntityPlayerSP;", 
-        "Lnet/minecraft/network/NetworkManager;", 
-        "Lnet/minecraft/client/multiplayer/PlayerControllerMP;",
-        "Lnet/minecraft/client/network/NetHandlerPlayClient;"
+        "Lnet/minecraft/network/NetworkManager;"
     )
 }
 
@@ -56,7 +51,7 @@ function Get-JarData {
             $EntryStream.Close()
         }
     } catch {
-        Write-Host "[-] Impossibile decodificare il file JAR: $JarPath" -ForegroundColor Red
+        Write-Host "[-] Failed to decode JAR file: $JarPath" -ForegroundColor Red
     } finally {
         if ($null -ne $Archive) { $Archive.Dispose() }
         if ($null -ne $Stream) { $Stream.Dispose() }
@@ -72,13 +67,13 @@ function Start-BxoCheatAnalysis {
     param ([string]$JarPath)
     
     if (-not (Test-Path $JarPath)) {
-        Write-Host "[-] File non trovato: $JarPath" -ForegroundColor Red
+        Write-Host "[-] File not found: $JarPath" -ForegroundColor Red
         return
     }
 
     $ModName = [System.IO.Path]::GetFileName($JarPath)
     Write-Host "--------------------------------------------------" -ForegroundColor Gray
-    Write-Host " [*] Analisi avviata su: $ModName" -ForegroundColor Cyan
+    Write-Host " [*] Scanning: $ModName" -ForegroundColor Cyan
     Write-Host "--------------------------------------------------" -ForegroundColor Gray
 
     $Reports = @()
@@ -86,7 +81,7 @@ function Start-BxoCheatAnalysis {
 
     $JarData = Get-JarData -JarPath $JarPath
     if ($JarData.Count -eq 0) {
-        Write-Host "[-] Errore: Archivio vuoto o corrotto." -ForegroundColor Red
+        Write-Host "[-] Error: Empty or corrupted archive." -ForegroundColor Red
         return
     }
 
@@ -95,7 +90,7 @@ function Start-BxoCheatAnalysis {
         if ($FilePath -eq "META-INF/MANIFEST.MF") { $HasManifest = $true; break }
     }
     if (-not $HasManifest) {
-        $Reports += "STRUTTURA: MANIFEST.MF mancante. Potrebbe non essere una mod standard."
+        $Reports += "STRUCTURE: Missing MANIFEST.MF file."
     }
 
     $SuspiciousMixins = @()
@@ -103,16 +98,16 @@ function Start-BxoCheatAnalysis {
         if ($File.Key -match "mixins?\..*json$") {
             foreach ($Target in $Patterns["Mixins"]) {
                 if ($File.Value.Text -match $Target) {
-                    $SuspiciousMixins += "Mixin: $($File.Key) -> Target class: $Target"
+                    $SuspiciousMixins += "Mixin: $($File.Key) -> Target: $Target"
                 }
             }
         }
     }
 
     if ($SuspiciousMixins.Count -gt 0) {
-        $CheatScore += 45
+        $CheatScore += 20
         foreach ($Mixin in $SuspiciousMixins) {
-            $Reports += "INTERCETTAZIONE: $Mixin (Modifica dei pacchetti nativi)."
+            $Reports += "INTERCEPTION: $Mixin"
         }
     }
 
@@ -129,15 +124,15 @@ function Start-BxoCheatAnalysis {
 
     if ($CheatHits.Count -gt 0) {
         $Multiplier = $CheatHits.Count
-        if ($Multiplier -gt 5) { $Multiplier = 5 }
-        $CheatScore += (15 * $Multiplier)
+        if ($Multiplier -gt 4) { $Multiplier = 4 }
+        $CheatScore += (20 * $Multiplier)
         
-        $ShownHits = $CheatHits | Select-Object -First 5
+        $ShownHits = $CheatHits | Select-Object -First 4
         foreach ($Hit in $ShownHits) {
-            $Reports += "MODULO CHEAT: $Hit"
+            $Reports += "CHEAT SIGNATURE: $Hit"
         }
-        if ($CheatHits.Count -gt 5) {
-            $Reports += "MODULO CHEAT: ...e altri $($CheatHits.Count - 5) rilevamenti."
+        if ($CheatHits.Count -gt 4) {
+            $Reports += "CHEAT SIGNATURE: ...and $($CheatHits.Count - 4) other matches."
         }
     }
 
@@ -154,69 +149,70 @@ function Show-CheatReport {
     if ($CheatScore -gt 100) { $CheatScore = 100 }
 
     $Color = "Green"
-    $StatusText = "PULITO (Nessun Cheat Rilevato)"
-    if ($CheatScore -ge 20 -and $CheatScore -lt 50) {
+    $StatusText = "CLEAN (No Cheats Found)"
+    if ($CheatScore -ge 30 -and $CheatScore -lt 65) {
         $Color = "Yellow"
-        $StatusText = "SOSPETTO (Rilevate possibili stringhe modificate)"
-    } elseif ($CheatScore -ge 50) {
+        $StatusText = "SUSPICIOUS (Review recommended)"
+    } elseif ($CheatScore -ge 65) {
         $Color = "Red"
-        $StatusText = "CHEAT RILEVATO (Presenza di moduli di hack)"
+        $StatusText = "CHEAT DETECTED (High confidence)"
     }
 
     Write-Host ""
-    Write-Host "=== VERDETTO ANTICHEAT ===" -ForegroundColor $Color
-    Write-Host "Mod analizzata: $ModName" -ForegroundColor White
-    Write-Host "Stato minaccia: $StatusText" -ForegroundColor $Color
-    Write-Host "Punteggio di sospetto: $CheatScore / 100" -ForegroundColor $Color
-    Write-Host "==========================" -ForegroundColor $Color
-
-    if ($Reports.Count -eq 0) {
-        Write-Host "  [+] Nessuna stringa sospetta trovata. La mod sembra sicura." -ForegroundColor Green
-    } else {
-        Write-Host "  [!] RILEVAMENTI DETTAGLIATI:" -ForegroundColor Yellow
+    Write-Host "=== SCAN VERDICT ===" -ForegroundColor $Color
+    Write-Host "Mod file: $ModName" -ForegroundColor White
+    Write-Host "Status:   $StatusText" -ForegroundColor $Color
+    Write-Host "Score:    $CheatScore / 100" -ForegroundColor $Color
+    
+    # Mostra i flag attivi direttamente dentro i dettagli del verdetto
+    if ($Reports.Count -gt 0) {
+        Write-Host "Active Flags:" -ForegroundColor $Color
         foreach ($Report in $Reports) {
-            Write-Host "  [-] $Report" -ForegroundColor LightRed
+            Write-Host "  -> $Report" -ForegroundColor LightRed
         }
+    } else {
+        Write-Host "Active Flags: None (Mod seems safe)" -ForegroundColor Green
     }
+    Write-Host "====================" -ForegroundColor $Color
     Write-Host ""
 }
 
-Write-Host "Seleziona opzione:" -ForegroundColor Cyan
-Write-Host "1) Analizza una singola mod (.jar)"
-Write-Host "2) Analizza una cartella intera"
-Write-Host "3) Esci"
+Write-Host "Select option:" -ForegroundColor Cyan
+Write-Host "1) Scan a single mod (.jar)"
+Write-Host "2) Scan a folder"
+Write-Host "3) Exit"
 Write-Host ""
-$Choice = Read-Host "Scegli (1-3)"
+$Choice = Read-Host "Choice (1-3)"
 
 if ($Choice -eq "1") {
-    $FilePath = Read-Host "Inserisci il percorso del file .jar"
+    $FilePath = Read-Host "Enter the path of the .jar file"
     if ($FilePath) {
         $FilePath = $FilePath.Trim().Trim([char]34)
         Start-BxoCheatAnalysis -JarPath $FilePath
     }
 } 
 elseif ($Choice -eq "2") {
-    $Folder = Read-Host "Inserisci il percorso della cartella"
+    $Folder = Read-Host "Enter the folder path"
     if ($Folder) {
         $Folder = $Folder.Trim().Trim([char]34)
         if (Test-Path $Folder) {
             $Files = Get-ChildItem -Path $Folder -Filter "*.jar"
             if ($Files.Count -eq 0) {
-                Write-Host "[-] Nessun file .jar trovato nella cartella." -ForegroundColor Yellow
+                Write-Host "[-] No .jar files found in this folder." -ForegroundColor Yellow
             } else {
-                Write-Host "[+] Trovati $($Files.Count) file da scansionare." -ForegroundColor Green
+                Write-Host "[+] Found $($Files.Count) files to scan." -ForegroundColor Green
                 foreach ($File in $Files) {
                     Start-BxoCheatAnalysis -JarPath $File.FullName
                 }
             }
         } else {
-            Write-Host "[-] Cartella non trovata." -ForegroundColor Red
+            Write-Host "[-] Folder not found." -ForegroundColor Red
         }
     }
 } 
 else {
-    Write-Host "[*] Uscita." -ForegroundColor Cyan
+    Write-Host "[*] Exiting." -ForegroundColor Cyan
 }
 
 Write-Host ""
-Read-Host "Premi INVIO per uscire..."
+Read-Host "Press ENTER to close..."
